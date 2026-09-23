@@ -1,0 +1,106 @@
+<script setup lang="ts">
+import { Clock, Download, Music4, User } from 'lucide-vue-next'
+import type { QualityOption, VideoInfo } from '../types'
+
+defineProps<{ video: VideoInfo }>()
+const selected = defineModel<string>('selected', { required: true })
+const emit = defineEmits<{ download: [] }>()
+
+const isHighEnd = (option: QualityOption) => (option.height ?? 0) >= 1440
+</script>
+
+<template>
+  <section class="card animate-rise overflow-hidden">
+    <div class="flex flex-col sm:flex-row">
+      <!-- 没有封面时不占一整列空白，避免卡片被撑得又空又歪 -->
+      <div
+        v-if="video.thumbnail"
+        class="relative aspect-video shrink-0 bg-slate-100 sm:aspect-auto sm:w-64 md:w-72"
+      >
+        <img
+          :src="video.thumbnail"
+          :alt="video.title"
+          referrerpolicy="no-referrer"
+          loading="lazy"
+          class="absolute inset-0 size-full object-cover"
+        />
+        <span
+          v-if="video.duration_text"
+          class="absolute right-2 bottom-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white"
+        >
+          {{ video.duration_text }}
+        </span>
+      </div>
+
+      <div class="min-w-0 flex-1 p-4 sm:p-5">
+        <h2 class="line-clamp-2 text-base leading-snug font-bold text-slate-900 sm:text-lg">
+          {{ video.title }}
+        </h2>
+
+        <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-500">
+          <span
+            v-if="video.platform"
+            class="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-600"
+          >
+            {{ video.platform }}
+          </span>
+          <span v-if="video.uploader" class="inline-flex max-w-40 items-center gap-1 truncate">
+            <User class="size-3.5 shrink-0" />{{ video.uploader }}
+          </span>
+          <span v-if="video.duration_text" class="inline-flex items-center gap-1">
+            <Clock class="size-3.5" />{{ video.duration_text }}
+          </span>
+        </div>
+
+        <div class="mt-4 border-t border-slate-100 pt-4">
+          <p class="text-xs font-semibold text-slate-400">选择清晰度</p>
+
+          <div class="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <button
+              v-for="option in video.options"
+              :key="option.id"
+              type="button"
+              class="relative min-h-11 rounded-xl border px-3 py-2.5 text-left transition"
+              :class="
+                selected === option.id
+                  ? 'border-brand-500 bg-brand-50/70 ring-1 ring-brand-500/40'
+                  : 'border-slate-200 bg-white hover:border-brand-300 hover:bg-slate-50'
+              "
+              @click="selected = option.id"
+            >
+              <span class="flex items-center gap-1.5">
+                <Music4 v-if="option.kind === 'audio'" class="size-3.5 shrink-0 text-slate-400" />
+                <span class="truncate text-sm font-semibold text-slate-900">{{ option.label }}</span>
+              </span>
+              <span class="mt-0.5 block truncate text-xs text-slate-400">
+                {{ option.filesize_text || option.note }}
+              </span>
+
+              <span
+                v-if="option.recommended"
+                class="absolute -top-1.5 right-2 rounded-full bg-brand-500 px-1.5 py-px text-[10px] font-semibold text-white"
+              >
+                推荐
+              </span>
+              <span
+                v-else-if="isHighEnd(option)"
+                class="absolute -top-1.5 right-2 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-1.5 py-px text-[10px] font-semibold text-white"
+              >
+                超清
+              </span>
+            </button>
+          </div>
+
+          <button
+            type="button"
+            class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white shadow-lift transition hover:opacity-90 sm:w-auto"
+            @click="emit('download')"
+          >
+            <Download class="size-4" />
+            开始下载
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>

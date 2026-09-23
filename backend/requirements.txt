@@ -1,0 +1,16 @@
+# Web 框架
+fastapi>=0.115
+uvicorn[standard]>=0.32
+
+# 核心下载能力。不锁死版本：各平台反爬策略变化快，
+# yt-dlp 靠高频发版对抗，务必定期执行 pip install -U yt-dlp
+yt-dlp
+
+# yt-dlp 的可选加速/兼容依赖
+brotli
+certifi
+requests
+websockets
+
+# TLS 指纹伪装。YouTube / TikTok 等站点没有这层很容易被拦
+curl_cffi

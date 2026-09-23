@@ -1,0 +1,13 @@
+backend/.venv/
+backend/data/downloads/
+backend/data/app.db
+backend/data/cookies/
+backend/_bili_*/
+backend/_bili_*.txt
+backend/**/__pycache__/
+frontend/node_modules/
+frontend/dist/
+*.pyc
+.DS_Store
+.idea/
+.vscode/

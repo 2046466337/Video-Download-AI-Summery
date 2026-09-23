@@ -1,0 +1,77 @@
+@import 'tailwindcss';
+
+/* 设计令牌取自参考站 ai.codefather.cn 的实测计算样式：
+   主色 #1777FF、强调色 #2563EB、卡片 12px 圆角 + 极淡投影、页面浅灰底。 */
+@theme {
+  --color-brand-50: #eef5ff;
+  --color-brand-100: #d9e8ff;
+  --color-brand-200: #b6d2ff;
+  --color-brand-300: #85b4ff;
+  --color-brand-400: #4a92ff;
+  --color-brand-500: #1777ff;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-900: #1e3a8a;
+
+  --color-canvas: #f7f8fa;
+  --color-ink: #0f172a;
+
+  --radius-card: 12px;
+
+  --shadow-card: 0 4px 20px -4px rgb(0 0 0 / 0.05);
+  --shadow-lift: 0 12px 32px -10px rgb(23 119 255 / 0.28);
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-canvas);
+  background-image: radial-gradient(rgb(15 23 42 / 0.035) 1px, transparent 1px);
+  background-size: 22px 22px;
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 参考站的标题特征：900 字重 + 收紧字距 */
+.headline {
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+
+.card {
+  border-radius: var(--radius-card);
+  background-color: #fff;
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgb(0 0 0 / 0.05);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise {
+  animation: rise 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-rise {
+    animation: none;
+  }
+}
