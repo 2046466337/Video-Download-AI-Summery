@@ -14,3 +14,7 @@ websockets
 
 # TLS 指纹伪装。YouTube / TikTok 等站点没有这层很容易被拦
 curl_cffi
+
+# 抖音 Argus 风控需要真实浏览器渲染；优先用系统 Edge（channel="msedge"），
+# 无 Edge 时需执行 `python -m playwright install chromium` 下载浏览器
+playwright

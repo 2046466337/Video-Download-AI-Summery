@@ -14,6 +14,7 @@ import requests
 import yt_dlp
 
 from .bilibili_adapter import BiliError, build_bilibili_info, download_bilibili, is_bilibili
+from .douyin_adapter import DouyinError, build_douyin_info, download_douyin, is_douyin
 from .config import FFMPEG_LOCATION, SOCKET_TIMEOUT
 from .site_profiles import profile_for
 from .utils import format_duration, format_size
@@ -218,6 +219,14 @@ def parse_video(url: str) -> dict[str, Any]:
         except requests.RequestException as exc:
             raise ParseError("B 站接口请求失败，请稍后重试") from exc
 
+    if is_douyin(url):
+        try:
+            return build_douyin_info(url)
+        except DouyinError as exc:
+            raise ParseError(str(exc)) from exc
+        except requests.RequestException as exc:
+            raise ParseError("抖音接口请求失败，请稍后重试") from exc
+
     opts = _base_opts(url) | {"skip_download": True}
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
@@ -321,6 +330,14 @@ def download_video(url: str, option_id: str, out_dir: Path, on_progress, on_stag
             raise ParseError(str(exc)) from exc
         except requests.RequestException as exc:
             raise ParseError("B 站视频下载失败，请稍后重试") from exc
+
+    if is_douyin(url):
+        try:
+            return download_douyin(url, option_id, out_dir, on_progress, on_stage)
+        except DouyinError as exc:
+            raise ParseError(str(exc)) from exc
+        except requests.RequestException as exc:
+            raise ParseError("抖音视频下载失败，请稍后重试") from exc
 
     opts = build_download_opts(url, option_id, out_dir, [on_progress], [on_stage])
 
