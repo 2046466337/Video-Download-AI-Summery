@@ -2,6 +2,8 @@
 
 打开网页、粘贴链接、选清晰度、点下载。电脑和手机都能用，不需要安装客户端。
 
+还能一键 AI 总结视频：抽取字幕，用大模型生成内容摘要、核心要点、章节大纲、思维导图，并可针对视频内容追问；结果按「总结摘要 / 字幕文本 / 思维导图 / AI 问答」四个标签页 **SSE 流式** 逐字输出。视频解析成功后会自动触发总结；字幕面板可下载原始字幕（`.srt / .vtt / .md`）；思维导图支持全屏展示与 SVG / Markdown 下载（SVG 可滚轮缩放、拖拽查看）。
+
 基于 [yt-dlp](https://github.com/yt-dlp/yt-dlp) 薄封装，不修改其源码，可随时跟随上游更新。
 
 更完整的背景与架构说明：
@@ -15,6 +17,19 @@
 - Python 3.12+（本仓库在 3.14 下验证过）
 - Node.js 20+
 - FFmpeg（必须在 PATH 中，用于合并音视频轨和提取 MP3）
+
+## AI 视频总结（可选）
+
+AI 总结基于 DeepSeek（OpenAI 兼容接口）。在项目根目录 `.env` 配置：
+
+```bash
+DEEPSEEK_API_KEY=sk-...
+# 可选：自定义模型与接口地址
+DEEPSEEK_MODEL=deepseek-chat
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+```
+
+未配置 `DEEPSEEK_API_KEY` 时下载功能不受影响，仅 AI 总结会提示「尚未配置 AI 服务」。
 
 ## 启动
 
@@ -37,8 +52,16 @@ npm run dev
 
 ## 冒烟测试
 
+下载链路：
+
 ```bash
 backend/.venv/Scripts/python.exe scripts/api_smoke_test.py "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+```
+
+AI 总结链路（需先配置 `DEEPSEEK_API_KEY`）：
+
+```bash
+backend/.venv/Scripts/python.exe scripts/summary_smoke_test.py "https://www.bilibili.com/video/BV1mAAmzqEfP"
 ```
 
 ## 维护
