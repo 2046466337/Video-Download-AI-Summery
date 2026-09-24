@@ -1,0 +1,155 @@
+"""探测 B 站新字幕接口 x/v2/subtitle/web/view（protobuf 返回）在游客态的行为。"""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+from urllib.parse import urlencode
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import requests
+
+from app.bilibili_adapter import API_HEADERS, extract_ids, fetch_view
+
+URLS = [
+    "https://bilibili.com/video/BV1mAAmzqEfP",
+    "https://www.bilibili.com/video/BV1wENtzkEAq/",
+]
+
+WEB_SUBTITLE_API = "https://api.bilibili.com/x/v2/subtitle/web/view"
+
+# 读取 buvid cookie
+def load_cookies() -> dict[str, str]:
+    cookies: dict[str, str] = {}
+    p = Path("_bili_cookies.txt")
+    if not p.exists():
+        return cookies
+    for line in p.read_text(encoding="utf-8").splitlines():
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) >= 7:
+            cookies[parts[5]] = parts[6]
+    return cookies
+
+
+def read_varint(buf: bytes, pos: int):
+    value = 0
+    shift = 0
+    while pos < len(buf):
+        b = buf[pos]
+        pos += 1
+        value |= (b & 0x7F) << shift
+        if not (b & 0x80):
+            return value, pos
+        shift += 7
+    return value, pos
+
+
+def decode_message(buf: bytes):
+    """返回 [(field_num, wire_type, value_bytes_or_varint)]。"""
+    fields = []
+    pos = 0
+    while pos < len(buf):
+        key, pos = read_varint(buf, pos)
+        field_num = key >> 3
+        wire_type = key & 7
+        if wire_type == 0:
+            val, pos = read_varint(buf, pos)
+            fields.append((field_num, wire_type, val))
+        elif wire_type == 1:
+            fields.append((field_num, wire_type, buf[pos:pos + 8]))
+            pos += 8
+        elif wire_type == 2:
+            length, pos = read_varint(buf, pos)
+            fields.append((field_num, wire_type, buf[pos:pos + length]))
+            pos += length
+        elif wire_type == 5:
+            fields.append((field_num, wire_type, buf[pos:pos + 4]))
+            pos += 4
+        else:
+            break
+    return fields
+
+
+def parse_subtitle_tracks(payload: bytes):
+    """按脚本逻辑解析 protobuf 返回的字幕轨道。"""
+    top = decode_message(payload)
+    data = next((f[2] for f in top if f[0] == 1 and f[1] == 2), None)
+    if not data:
+        return []
+    tracks = []
+    for field in decode_message(data):
+        if field[0] != 3 or field[1] != 2 or not field[2]:
+            continue
+        inner = decode_message(field[2])
+        def fv(n):
+            return next((f[2] for f in inner if f[0] == n and f[1] == 0), None)
+        def ft(n):
+            return next((f[2].decode("utf-8", "ignore") for f in inner if f[0] == n and f[1] == 2), "")
+        tracks.append({
+            "id": fv(1),
+            "id_str": ft(2),
+            "lan": ft(3),
+            "lan_doc": ft(4),
+            "subtitle_url": ft(5),
+        })
+    return [t for t in tracks if t["lan"] and t["subtitle_url"]]
+
+
+def probe(url: str, cookies: dict[str, str], label: str) -> None:
+    print("\n" + "=" * 70)
+    print(f"URL: {url}   [{label}]")
+    bvid, aid, page = extract_ids(url)
+    view = fetch_view(bvid, aid)
+    pages = view.get("pages") or []
+    page_info = pages[page - 1] if 0 < page <= len(pages) else (pages[0] if pages else {})
+    cid = int(page_info.get("cid") or view.get("cid"))
+    aid_val = view.get("aid") or aid
+    print("aid:", aid_val, "cid:", cid)
+
+    params = {
+        "oid": str(cid),
+        "pid": str(aid_val),
+        "context_ext": json.dumps({"video_type": 1}),
+        "type": "1",
+        "cur_production_type": "0",
+        "preferred_language": "ai-zh",
+        "playlist_switch": "0",
+    }
+    headers = dict(API_HEADERS)
+    headers["Accept"] = "application/octet-stream"
+    try:
+        resp = requests.get(WEB_SUBTITLE_API, headers=headers, params=params, cookies=cookies, timeout=(10, 30))
+    except Exception as exc:  # noqa: BLE001
+        print("!! 请求异常:", repr(exc))
+        return
+    print("HTTP:", resp.status_code, "| content-type:", resp.headers.get("content-type"))
+    body = resp.content
+    print("返回字节数:", len(body))
+    ct = (resp.headers.get("content-type") or "").lower()
+    if "json" in ct:
+        print("JSON 响应:", body.decode("utf-8", "ignore")[:300])
+        return
+    # protobuf
+    tracks = parse_subtitle_tracks(body)
+    print("解析到字幕轨道数:", len(tracks))
+    for t in tracks:
+        print("   - lan:", t["lan"], "| lan_doc:", t["lan_doc"], "| url:", t["subtitle_url"][:90])
+    if not tracks:
+        print("原始字节(前120):", body[:120])
+
+
+def main() -> None:
+    cookies = load_cookies()
+    print("cookie 键:", list(cookies.keys()))
+    for u in URLS:
+        probe(u, {}, "无 cookie")
+        if cookies:
+            probe(u, cookies, "带 buvid cookie")
+
+
+if __name__ == "__main__":
+    main()

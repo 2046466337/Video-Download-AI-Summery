@@ -4,7 +4,7 @@ AI 视频总结的第一步是拿到「可读的文本」。这里统一从各�
 输出规范化的时间轴列表 `[{start, end, text}]`（单位为秒）。
 
 平台分流策略与下载主链路一致、但完全独立：
-- 哔哩哔哩：走 `x/player/v2` 公开接口拿字幕 JSON（复用 bilibili_adapter 的 ID 解析与 view 数据）
+- 哔哩哔哩：走 `x/v2/dm/view` 公开接口拿字幕 JSON（同时含人工 CC 字幕与 AI 字幕，复用 bilibili_adapter 的 ID 解析与 view 数据）
 - 抖音：无公开字幕接口，返回空列表
 - 其余（YouTube / TikTok 等上千站点）：走 yt-dlp 的 subtitles / automatic_captions 元数据
 
@@ -46,7 +46,7 @@ _BROWSER_UA = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 )
 
-_TIMEOUT = (10, 30)
+_TIMEOUT = (15, 60)
 
 
 class SubtitleError(RuntimeError):
@@ -253,14 +253,15 @@ def _bilibili_subtitles(url: str) -> list[dict[str, Any]]:
     if not cid:
         return []
 
-    params: dict[str, Any] = {"cid": int(cid)}
-    if bvid:
-        params["bvid"] = bvid
-    else:
-        params["aid"] = aid
+    # dm/view 接口能同时返回人工 CC 字幕与 AI 字幕（AI 字幕 lan 带 ai- 前缀），
+    # 相比 x/player/v2 覆盖更多视频（尤其只有 AI 字幕、没有人工字幕的）。
+    aid = view.get("aid") or aid
+    if not aid:
+        return []
+    params: dict[str, Any] = {"aid": aid, "oid": int(cid), "type": 1}
 
     response = requests.get(
-        "https://api.bilibili.com/x/player/v2", headers=API_HEADERS, params=params, timeout=_TIMEOUT
+        "https://api.bilibili.com/x/v2/dm/view", headers=API_HEADERS, params=params, timeout=_TIMEOUT
     )
     response.raise_for_status()
     payload = response.json()
@@ -270,16 +271,21 @@ def _bilibili_subtitles(url: str) -> list[dict[str, Any]]:
     if not subtitles:
         return []
 
-    # 优先中文，否则第一个
+    # 优先人工中文字幕，其次 AI 中文字幕，最后取第一个
     chosen = next(
-        (s for s in subtitles if _lang_key(s.get("lan") or "") in ("zh-cn", "zh-hans", "zh", "ai-zh")),
-        subtitles[0],
+        (s for s in subtitles if _lang_key(s.get("lan") or "") in ("zh-cn", "zh-hans", "zh")),
+        next(
+            (s for s in subtitles if _lang_key(s.get("lan") or "") == "ai-zh"),
+            subtitles[0],
+        ),
     )
     sub_url = chosen.get("subtitle_url") or chosen.get("url") or ""
     if not sub_url:
         return []
     if sub_url.startswith("//"):
         sub_url = "https:" + sub_url
+    if sub_url.startswith("http://"):
+        sub_url = "https://" + sub_url[7:]
     raw = _download_text(sub_url, referer="https://www.bilibili.com/")
     return _parse_bilibili_json(raw)
 
