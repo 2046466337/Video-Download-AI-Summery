@@ -157,3 +157,67 @@ def _strip_code_fence(text: str) -> str:
     if text.rstrip().endswith("```"):
         text = text.rstrip()[:-3]
     return text.strip()
+
+
+def chat_stream(
+    messages: list[dict[str, Any]],
+    max_tokens: int = 4096,
+    temperature: float = 0.3,
+):
+    """流式调用 DeepSeek，逐分片 yield 文本。
+
+    与 chat_text / chat_json 的唯一区别是 stream=True：不阻塞等全文，
+    边生成边返回，供 SSE 接口按序推送。
+    """
+    if not API_KEY:
+        raise AIClientError(
+            "尚未配置 AI 服务，请在服务端设置 DEEPSEEK_API_KEY 环境变量后重试"
+        )
+
+    body: dict[str, Any] = {
+        "model": MODEL,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "stream": True,
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}",
+    }
+
+    try:
+        response = requests.post(
+            f"{BASE_URL}/chat/completions",
+            headers=headers,
+            json=body,
+            timeout=TIMEOUT,
+            stream=True,
+        )
+    except requests.RequestException as exc:
+        raise AIClientError(f"AI 服务连接失败，请稍后重试（{exc}）") from exc
+
+    if response.status_code != 200:
+        detail = _extract_error(response)
+        raise AIClientError(detail)
+
+    for raw_line in response.iter_lines(decode_unicode=True):
+        if not raw_line:
+            continue
+        line = raw_line.strip()
+        if not line.startswith("data:"):
+            continue
+        data = line[5:].strip()
+        if data == "[DONE]":
+            break
+        try:
+            payload = json.loads(data)
+        except json.JSONDecodeError:
+            continue
+        choices = payload.get("choices") or []
+        if not choices:
+            continue
+        delta = choices[0].get("delta") or {}
+        content = delta.get("content")
+        if content:
+            yield content

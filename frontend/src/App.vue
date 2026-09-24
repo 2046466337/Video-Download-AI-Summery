@@ -7,7 +7,7 @@ import FeatureSection from './components/FeatureSection.vue'
 import HeroSearch from './components/HeroSearch.vue'
 import HowItWorks from './components/HowItWorks.vue'
 import ProSection from './components/ProSection.vue'
-import SummaryCard from './components/SummaryCard.vue'
+import SummaryPanel from './components/SummaryPanel.vue'
 import TaskList from './components/TaskList.vue'
 import VideoResult from './components/VideoResult.vue'
 import { useDownloader } from './composables/useDownloader'
@@ -28,12 +28,19 @@ const {
 } = useDownloader()
 
 const {
-  summary,
+  activeTab,
+  tabStatus,
   errorMessage: summaryError,
+  summaryText,
+  keyPoints,
+  transcript,
+  chapters,
+  mindmapMarkdown,
   chatMessages,
   chatInput,
   asking,
   startSummary,
+  selectTab,
   ask,
   reset: resetSummary,
 } = useSummarizer()
@@ -75,52 +82,63 @@ watch(
         @parse="parse"
       />
 
-      <div class="mx-auto max-w-3xl space-y-4 px-4 pt-6 sm:px-6">
+      <!-- 视频解析后的左右分栏：桌面 4:6 并排，移动端上下流式 -->
+      <div v-if="video" class="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
         <p
           v-if="errorMessage"
           role="alert"
-          class="animate-rise flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600"
+          class="animate-rise mb-4 flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600"
         >
           <AlertCircle class="mt-0.5 size-4 shrink-0" />
           <span>{{ errorMessage }}</span>
         </p>
 
-        <div id="result" class="scroll-mt-24">
-          <VideoResult
-            v-if="video"
-            v-model:selected="selectedOptionId"
-            :video="video"
-            @download="startDownload()"
-            @summarize="onSummarize"
-          />
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-10">
+          <!-- 左栏：视频预览卡片（4/10） -->
+          <div id="result" class="scroll-mt-24 lg:col-span-4">
+            <VideoResult
+              v-model:selected="selectedOptionId"
+              :video="video"
+              @download="startDownload()"
+              @summarize="onSummarize"
+            />
+          </div>
+
+          <!-- 右栏：Tab 面板（6/10） -->
+          <div id="summary" class="scroll-mt-24 lg:col-span-6">
+            <p
+              v-if="summaryError"
+              role="alert"
+              class="animate-rise mb-4 flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600"
+            >
+              <AlertCircle class="mt-0.5 size-4 shrink-0" />
+              <span>{{ summaryError }}</span>
+            </p>
+            <SummaryPanel
+              v-model:chat-input="chatInput"
+              :active-tab="activeTab"
+              :tab-status="tabStatus"
+              :summary-text="summaryText"
+              :key-points="keyPoints"
+              :transcript="transcript"
+              :chapters="chapters"
+              :mindmap-markdown="mindmapMarkdown"
+              :chat-messages="chatMessages"
+              :asking="asking"
+              :video-url="video.url"
+              @select-tab="selectTab"
+              @ask="ask"
+            />
+          </div>
         </div>
 
-        <div id="summary" class="scroll-mt-24">
-          <p
-            v-if="summaryError"
-            role="alert"
-            class="animate-rise flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600"
-          >
-            <AlertCircle class="mt-0.5 size-4 shrink-0" />
-            <span>{{ summaryError }}</span>
-          </p>
-          <SummaryCard
-            v-if="summary"
-            v-model:chatInput="chatInput"
-            :summary="summary"
-            :chat-messages="chatMessages"
-            :asking="asking"
-            :video-url="video?.url || ''"
-            @ask="ask"
-          />
-        </div>
-
-        <div id="tasks" class="scroll-mt-24">
+        <div id="tasks" class="mt-4 scroll-mt-24">
           <TaskList :tasks="tasks" @save="saveToDevice" @remove="removeTask" />
         </div>
       </div>
 
-      <div class="mx-auto mt-16 max-w-3xl space-y-14 px-4 sm:px-6">
+      <!-- 未解析时的引导内容 -->
+      <div v-else class="mx-auto mt-16 max-w-3xl space-y-14 px-4 sm:px-6">
         <HowItWorks />
         <FeatureSection />
         <ProSection />

@@ -15,9 +15,9 @@ from typing import Any
 
 from datetime import datetime, timezone
 
-from . import ai_client, db, subtitles
+from . import ai_client, db, subtitles, summarizer
 from .config import DB_PATH
-from .summarizer import ask_question, summarize
+from .summarizer import ask_question
 
 
 def _now_iso() -> str:
@@ -65,6 +65,13 @@ class SummaryTask:
     error: str = ""
     transcript: list[dict[str, Any]] = field(default_factory=list)
     result: dict[str, Any] | None = None
+    transcript_text: str = ""
+    subtitle_ready: threading.Event = field(default_factory=threading.Event, repr=False)
+    # 流式模块结果缓存：生成后回填，重复点击不重复请求
+    summary_text: str = ""
+    key_points: list[str] = field(default_factory=list)
+    chapters_text: str = ""
+    mindmap_md: str = ""
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def snapshot(self) -> dict[str, Any]:
@@ -111,12 +118,127 @@ class SummaryManager:
         task = self.get(task_id)
         if not task:
             raise RuntimeError("总结任务不存在或已过期")
-        if task.status != "success" or not task.result:
+        if task.status != "success" or not task.transcript:
             raise RuntimeError("请先完成视频总结后再提问")
 
-        transcript_text = subtitles.transcript_to_text(task.transcript)
-        summary_text = str(task.result.get("summary") or "")
-        return ask_question(question, task.title, transcript_text, summary_text)
+        transcript_text = task.transcript_text or subtitles.transcript_to_text(task.transcript)
+        return ask_question(question, task.title, transcript_text, task.summary_text)
+
+    def stream(self, task_id: str, module: str, question: str = ""):
+        """按模块返回流式生成器，yield (event, data)。
+
+        module ∈ {summary, subtitle, mindmap, chat}；event ∈ {phase, delta}。
+        done / error 事件由路由层在遍历结束后统一发送。
+        """
+        task = self.get(task_id)
+        if not task:
+            raise RuntimeError("总结任务不存在或已过期")
+
+        # 等待后台线程把字幕提取完
+        if not task.subtitle_ready.wait(timeout=300):
+            raise RuntimeError("字幕提取超时，请稍后重试")
+        if task.status != "success":
+            raise RuntimeError(task.error or "字幕提取失败")
+
+        if not ai_client.is_configured():
+            raise ai_client.AIClientError(
+                "尚未配置 AI 服务，请在服务端设置 DEEPSEEK_API_KEY 环境变量后重试"
+            )
+
+        if module == "summary":
+            yield from self._stream_summary(task)
+        elif module == "subtitle":
+            yield from self._stream_subtitle(task)
+        elif module == "mindmap":
+            yield from self._stream_mindmap(task)
+        elif module == "chat":
+            if not question.strip():
+                raise RuntimeError("请输入要提问的内容")
+            yield from self._stream_chat(task, question.strip())
+        else:
+            raise RuntimeError(f"未知的总结模块：{module}")
+
+    def _stream_summary(self, task: SummaryTask):
+        with task.lock:
+            cached_text = task.summary_text
+            cached_points = list(task.key_points)
+        if cached_text:
+            yield "phase", "summary"
+            yield "delta", cached_text
+            yield "phase", "points"
+            yield "delta", "\n".join(f"- {p}" for p in cached_points)
+            return
+
+        summary_parts: list[str] = []
+        points_parts: list[str] = []
+        current = ""
+        for event, data in summarizer.stream_summary(task.title, task.transcript_text):
+            if event == "phase":
+                current = data
+                yield "phase", data
+            else:
+                if current == "summary":
+                    summary_parts.append(data)
+                elif current == "points":
+                    points_parts.append(data)
+                yield "delta", data
+
+        with task.lock:
+            task.summary_text = "".join(summary_parts).strip()
+            points_text = "".join(points_parts).strip()
+            task.key_points = [
+                p.lstrip("- ").strip()
+                for p in points_text.splitlines()
+                if p.lstrip("- ").strip()
+            ]
+
+    def _stream_subtitle(self, task: SummaryTask):
+        # 原始字幕是现成数据，分块推送，保证长文本也有渐进渲染
+        yield "phase", "transcript"
+        text = task.transcript_text
+        step = 240
+        for i in range(0, len(text), step):
+            yield "delta", text[i : i + step]
+
+        with task.lock:
+            cached = task.chapters_text
+        if cached:
+            yield "phase", "chapters"
+            yield "delta", cached
+            return
+
+        parts: list[str] = []
+        for event, data in summarizer.stream_chapters(task.title, task.transcript_text):
+            if event == "delta":
+                parts.append(data)
+            yield event, data
+        with task.lock:
+            task.chapters_text = "".join(parts).strip()
+
+    def _stream_mindmap(self, task: SummaryTask):
+        with task.lock:
+            cached = task.mindmap_md
+            summary_text = task.summary_text
+        if cached:
+            yield "phase", "mindmap"
+            yield "delta", cached
+            return
+
+        parts: list[str] = []
+        for event, data in summarizer.stream_mindmap(task.title, task.transcript_text, summary_text):
+            if event == "delta":
+                parts.append(data)
+            yield event, data
+        with task.lock:
+            task.mindmap_md = "".join(parts).strip()
+
+    def _stream_chat(self, task: SummaryTask, question: str):
+        with task.lock:
+            summary_text = task.summary_text
+        for event, data in summarizer.stream_chat(
+            question, task.title, task.transcript_text, summary_text
+        ):
+            yield event, data
 
     # ------------------------------------------------------------------ 内部
 
@@ -127,11 +249,6 @@ class SummaryManager:
             task.progress = 10.0
 
         try:
-            if not ai_client.is_configured():
-                raise ai_client.AIClientError(
-                    "尚未配置 AI 服务，请在服务端设置 DEEPSEEK_API_KEY 环境变量后重试"
-                )
-
             cues = subtitles.extract_subtitles(task.url)
             if not cues:
                 raise RuntimeError(
@@ -139,27 +256,23 @@ class SummaryManager:
                     "（B 站需 UP 主上传字幕，YouTube 可用自动字幕）"
                 )
             task.transcript = cues
-
-            with task.lock:
-                task.stage = STAGE_SUMMARIZING
-                task.progress = 50.0
-
-            text = subtitles.transcript_to_text(cues)
-            result = summarize(task.title, text)
+            task.transcript_text = subtitles.transcript_to_text(cues)
 
             with task.lock:
                 task.status = "success"
                 task.stage = STAGE_DONE
                 task.progress = 100.0
-                task.result = result
-            self._record(task.id, task.url, task.title, task.platform, "success", result)
+            self._record(task.id, task.url, task.title, task.platform, "success")
         except Exception as exc:  # noqa: BLE001 - 兜底，避免线程静默退出
-            message = str(exc) or "总结失败，请稍后重试"
+            message = str(exc) or "字幕提取失败，请稍后重试"
             with task.lock:
                 task.status = "failed"
                 task.stage = STAGE_FAILED
                 task.error = message
             self._record(task.id, task.url, task.title, task.platform, "failed", error=message)
+        finally:
+            # 无论成败都唤醒等待字幕的 SSE 流，让它们读到成功/失败状态
+            task.subtitle_ready.set()
 
     def _record(
         self,

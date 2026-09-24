@@ -192,3 +192,121 @@ def _to_number(value: Any) -> float:
         if match:
             return float(match.group(0))
     return 0.0
+
+
+# ------------------------------------------------------------------ 流式生成
+# 与 summarize() 的一次性 JSON 不同，这里按「模块」独立流式输出，供 SSE 逐分片推送。
+# 每个生成器 yield (event, data)，event ∈ {"phase", "delta"}：
+#   phase: 标记即将输出该模块内的哪一部分（summary / points / chapters / mindmap / answer）
+#   delta: 一段文本分片，前端按收到顺序追加渲染
+# done / error 事件由 summary_manager 在遍历结束后统一发送。
+
+def stream_summary(title: str, transcript_text: str):
+    """流式生成「内容摘要」+「核心要点」。"""
+    src = transcript_text[:MAX_CHARS_PER_CALL]
+
+    yield "phase", "summary"
+    messages = [
+        {"role": "system", "content": _SUMMARY_SYSTEM},
+        {"role": "user", "content": _summary_text_prompt(title, src)},
+    ]
+    for chunk in ai_client.chat_stream(messages, max_tokens=1024, temperature=0.3):
+        yield "delta", chunk
+
+    yield "phase", "points"
+    messages = [
+        {"role": "system", "content": _SUMMARY_SYSTEM},
+        {"role": "user", "content": _key_points_prompt(title, src)},
+    ]
+    for chunk in ai_client.chat_stream(messages, max_tokens=1024, temperature=0.3):
+        yield "delta", chunk
+
+
+def stream_chapters(title: str, transcript_text: str):
+    """流式生成「章节大纲」，输出固定格式的 markdown 行。"""
+    src = transcript_text[:MAX_CHARS_PER_CALL]
+    yield "phase", "chapters"
+    messages = [
+        {"role": "system", "content": _SUMMARY_SYSTEM},
+        {"role": "user", "content": _chapters_prompt(title, src)},
+    ]
+    for chunk in ai_client.chat_stream(messages, max_tokens=1024, temperature=0.3):
+        yield "delta", chunk
+
+
+def stream_mindmap(title: str, transcript_text: str, summary_text: str):
+    """流式生成「思维导图」，输出 markmap 可解析的 Markdown 列表。"""
+    yield "phase", "mindmap"
+    messages = [
+        {"role": "system", "content": _SUMMARY_SYSTEM},
+        {"role": "user", "content": _mindmap_prompt(title, transcript_text, summary_text)},
+    ]
+    for chunk in ai_client.chat_stream(messages, max_tokens=2048, temperature=0.5):
+        yield "delta", chunk
+
+
+def stream_chat(question: str, title: str, transcript_text: str, summary_text: str):
+    """流式生成「AI 问答」的回答。"""
+    yield "phase", "answer"
+    context = transcript_text
+    if len(context) > MAX_CHARS_PER_CALL * 2:
+        context = context[: MAX_CHARS_PER_CALL * 2]
+    messages = [
+        {"role": "system", "content": _SUMMARY_SYSTEM},
+        {
+            "role": "user",
+            "content": (
+                f"以下是视频《{title}》的内容摘要：\n{summary_text}\n\n"
+                f"以下是视频字幕（含时间戳 [MM:SS]）：\n{context}\n\n"
+                f"请根据以上内容回答用户问题，简洁、准确。"
+                f"若答案涉及具体时间点，请给出 [MM:SS] 时间戳。\n\n用户问题：{question}"
+            ),
+        },
+    ]
+    for chunk in ai_client.chat_stream(messages, max_tokens=2048, temperature=0.3):
+        yield "delta", chunk
+
+
+# ------------------------------------------------------------------ 流式 prompt
+
+def _summary_text_prompt(title: str, transcript_text: str) -> str:
+    return (
+        f"以下是视频《{title}》的字幕（含时间戳，格式 [MM:SS] 文本）。\n\n"
+        f"请用 200 字以内概括视频的核心内容，输出一段连贯的中文文字，"
+        f"不要标题、不要列表、不要多余说明。\n\n字幕：\n{transcript_text}"
+    )
+
+
+def _key_points_prompt(title: str, transcript_text: str) -> str:
+    return (
+        f"以下是视频《{title}》的字幕（含时间戳，格式 [MM:SS] 文本）。\n\n"
+        f"请提炼 3-8 条核心要点，每条单独一行，以「- 」开头，"
+        f"内容具体而非空泛，不要输出其他说明。\n\n字幕：\n{transcript_text}"
+    )
+
+
+def _chapters_prompt(title: str, transcript_text: str) -> str:
+    return (
+        f"以下是视频《{title}》的字幕（含时间戳，格式 [MM:SS] 文本）。\n\n"
+        f"请把视频内容划分为若干章节（4-8 章），每章单独一行，"
+        f"严格按下面格式输出：\n"
+        f"MM:SS 章节标题｜一句话说明\n"
+        f"要求：MM:SS 必须引用字幕中真实出现的时间戳（不要带方括号，直接写 MM:SS），"
+        f"按时间顺序排列，尽量覆盖全片；每章只用一行；不要输出任何其他文字。\n\n"
+        f"字幕：\n{transcript_text}"
+    )
+
+
+def _mindmap_prompt(title: str, transcript_text: str, summary_text: str) -> str:
+    src = transcript_text[:MAX_CHARS_PER_CALL]
+    return (
+        f"以下是视频《{title}》的内容。\n\n"
+        f"内容摘要：\n{summary_text}\n\n"
+        f"请生成一张思维导图，用 Markdown 无序列表表达层级结构：\n"
+        f"# 主题\n"
+        f"## 一级分支\n"
+        f"- 二级要点\n"
+        f"    - 三级细节（可选）\n"
+        f"要求：最多 3-4 层；节点文字简洁精炼；只输出 Markdown，"
+        f"不要代码块标记、不要解释文字。\n\n参考字幕要点：\n{src[:6000]}"
+    )
