@@ -21,6 +21,8 @@ export interface VideoInfo {
   platform: string
   view_count: number | null
   options: QualityOption[]
+  /** 解析成功后后端自动触发的 AI 总结任务 id；为空表示未触发 */
+  summary_task_id?: string
 }
 
 export type TaskStatus = 'queued' | 'running' | 'success' | 'failed'

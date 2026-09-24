@@ -32,6 +32,8 @@ class VideoInfo(BaseModel):
     platform: str = ""
     view_count: int | None = None
     options: list[QualityOption] = []
+    # 解析成功后自动触发的 AI 总结任务 id；为空表示未触发（如解析失败）
+    summary_task_id: str = ""
 
 
 class DownloadRequest(BaseModel):

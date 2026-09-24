@@ -59,6 +59,7 @@ class SummaryTask:
     url: str
     title: str
     platform: str = ""
+    auto: bool = False  # 解析成功后自动触发；失败时在任务内自动重试 1 次
     status: str = "queued"  # queued | running | success | failed
     stage: str = STAGE_QUEUED
     progress: float = 0.0
@@ -97,12 +98,15 @@ class SummaryManager:
             max_workers=SUMMARY_MAX_CONCURRENT, thread_name_prefix="summarizer"
         )
 
-    def submit(self, url: str, title: str, platform: str = "") -> SummaryTask:
+    def submit(
+        self, url: str, title: str, platform: str = "", auto: bool = False
+    ) -> SummaryTask:
         task = SummaryTask(
             id=uuid.uuid4().hex,
             url=url,
             title=title or "未命名视频",
             platform=platform,
+            auto=auto,
         )
         with self._lock:
             self._tasks[task.id] = task
@@ -243,36 +247,49 @@ class SummaryManager:
     # ------------------------------------------------------------------ 内部
 
     def _run(self, task: SummaryTask) -> None:
-        with task.lock:
-            task.status = "running"
-            task.stage = STAGE_SUBTITLES
-            task.progress = 10.0
+        # 自动任务（解析成功后触发）失败时在任务内重试 1 次；手动任务失败即止，交给用户重试
+        max_attempts = 2 if task.auto else 1
 
-        try:
-            cues = subtitles.extract_subtitles(task.url)
-            if not cues:
-                raise RuntimeError(
-                    "该视频没有可用的字幕，暂时无法 AI 总结。"
-                    "（B 站需 UP 主上传字幕，YouTube 可用自动字幕）"
+        for attempt in range(1, max_attempts + 1):
+            with task.lock:
+                task.status = "running"
+                task.stage = STAGE_SUBTITLES
+                task.progress = 10.0
+
+            try:
+                cues = subtitles.extract_subtitles(task.url)
+                if not cues:
+                    raise RuntimeError(
+                        "该视频没有可用的字幕，暂时无法 AI 总结。"
+                        "（B 站需 UP 主上传字幕，YouTube 可用自动字幕）"
+                    )
+                task.transcript = cues
+                task.transcript_text = subtitles.transcript_to_text(cues)
+
+                with task.lock:
+                    task.status = "success"
+                    task.stage = STAGE_DONE
+                    task.progress = 100.0
+                self._record(task.id, task.url, task.title, task.platform, "success")
+                task.subtitle_ready.set()
+                return
+            except Exception as exc:  # noqa: BLE001 - 兜底，避免线程静默退出
+                message = str(exc) or "字幕提取失败，请稍后重试"
+                if attempt < max_attempts:
+                    # 自动任务首次失败：原地重试一次，taskId 不变，前端无需感知
+                    with task.lock:
+                        task.error = message
+                    continue
+
+                with task.lock:
+                    task.status = "failed"
+                    task.stage = STAGE_FAILED
+                    task.error = message
+                self._record(
+                    task.id, task.url, task.title, task.platform, "failed", error=message
                 )
-            task.transcript = cues
-            task.transcript_text = subtitles.transcript_to_text(cues)
-
-            with task.lock:
-                task.status = "success"
-                task.stage = STAGE_DONE
-                task.progress = 100.0
-            self._record(task.id, task.url, task.title, task.platform, "success")
-        except Exception as exc:  # noqa: BLE001 - 兜底，避免线程静默退出
-            message = str(exc) or "字幕提取失败，请稍后重试"
-            with task.lock:
-                task.status = "failed"
-                task.stage = STAGE_FAILED
-                task.error = message
-            self._record(task.id, task.url, task.title, task.platform, "failed", error=message)
-        finally:
-            # 无论成败都唤醒等待字幕的 SSE 流，让它们读到成功/失败状态
-            task.subtitle_ready.set()
+                task.subtitle_ready.set()
+                return
 
     def _record(
         self,

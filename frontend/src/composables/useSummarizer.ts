@@ -4,6 +4,8 @@ import type { Chapter, ChatMessage, VideoInfo } from '../types'
 
 export type TabId = 'summary' | 'subtitle' | 'mindmap' | 'chat'
 
+export type SubtitleFormat = 'srt' | 'vtt' | 'md'
+
 export type TabStatus = 'idle' | 'loading' | 'done' | 'error'
 
 export interface TabState {
@@ -134,6 +136,12 @@ export function useSummarizer() {
     return `/api/summaries/${taskId.value}/stream?${params.toString()}`
   }
 
+  function downloadSubtitles(format: SubtitleFormat) {
+    if (!taskId.value) return
+    // 交给后端 attachment 头触发浏览器默认下载（与视频「保存到本地」一致）
+    window.location.href = `/api/summaries/${taskId.value}/subtitles?format=${format}`
+  }
+
   function applyDelta(tab: TabId, phase: string, content: string) {
     if (tab === 'summary') {
       if (phase === 'summary') summaryText.value += content
@@ -187,14 +195,25 @@ export function useSummarizer() {
         title: info.title,
         platform: info.platform,
       })
-      taskId.value = task.id
-      activeTab.value = 'summary'
-      // 自动加载链：先摘要，完成后自动预加载字幕；单个失败也继续下一个
-      loadTab('summary').finally(() => loadTab('subtitle'))
+      beginLoad(task.id)
     } catch (error) {
       errorMessage.value =
         error instanceof ApiError ? error.message : '创建总结任务失败'
     }
+  }
+
+  /** 后端已在解析阶段自动触发总结任务，前端拿到任务 id 直接进入流式展示。 */
+  function startFromTaskId(id: string) {
+    if (!id) return
+    reset()
+    beginLoad(id)
+  }
+
+  function beginLoad(id: string) {
+    taskId.value = id
+    activeTab.value = 'summary'
+    // 自动加载链：先摘要，完成后自动预加载字幕；单个失败也继续下一个
+    loadTab('summary').finally(() => loadTab('subtitle'))
   }
 
   function selectTab(tab: TabId) {
@@ -283,9 +302,12 @@ export function useSummarizer() {
     chatMessages,
     chatInput,
     asking,
+    taskId,
     startSummary,
+    startFromTaskId,
     selectTab,
     ask,
+    downloadSubtitles,
     reset,
   }
 }

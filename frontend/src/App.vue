@@ -40,8 +40,10 @@ const {
   chatInput,
   asking,
   startSummary,
+  startFromTaskId,
   selectTab,
   ask,
+  downloadSubtitles,
   reset: resetSummary,
 } = useSummarizer()
 
@@ -56,6 +58,10 @@ function onSummarize() {
 watch(video, async (info) => {
   resetSummary()
   if (!info) return
+  // 解析成功后，后端已自动触发 AI 总结任务，前端直接进入总结流式展示（沿用现有逻辑）
+  if (info.summary_task_id) {
+    startFromTaskId(info.summary_task_id)
+  }
   await nextTick()
   document.getElementById('result')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 })
@@ -105,7 +111,7 @@ watch(
           </div>
 
           <!-- 右栏：Tab 面板（6/10） -->
-          <div id="summary" class="scroll-mt-24 lg:col-span-6">
+          <div id="summary" class="flex scroll-mt-24 flex-col lg:col-span-6">
             <p
               v-if="summaryError"
               role="alert"
@@ -128,6 +134,7 @@ watch(
               :video-url="video.url"
               @select-tab="selectTab"
               @ask="ask"
+              @download-subtitles="downloadSubtitles"
             />
           </div>
         </div>

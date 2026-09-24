@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse
 from . import db
 from .schemas import DownloadRequest, ParseRequest, TaskState, VideoInfo
 from .security import UnsafeUrlError, validate_url
+from .summary_manager import summary_manager
 from .task_manager import task_manager
 from .ydl_service import ParseError, parse_video
 
@@ -38,6 +39,13 @@ async def parse(payload: ParseRequest) -> VideoInfo:
         info = await asyncio.to_thread(parse_video, url)
     except ParseError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    # 解析成功后自动触发 AI 总结任务（失败不触发）；仅新请求生效，不补跑历史视频。
+    # auto=True 让该任务在字幕提取失败时自动重试 1 次。
+    summary_task = summary_manager.submit(
+        url=info["url"], title=info["title"], platform=info["platform"], auto=True
+    )
+    info["summary_task_id"] = summary_task.id
 
     return VideoInfo(**info)
 

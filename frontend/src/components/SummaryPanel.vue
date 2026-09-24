@@ -2,7 +2,9 @@
 import {
   AlertCircle,
   Brain,
+  ChevronDown,
   Clock,
+  Download,
   FilePen,
   FileText,
   ListChecks,
@@ -11,9 +13,9 @@ import {
   Send,
   User,
 } from 'lucide-vue-next'
-import type { Component } from 'vue'
+import { computed, ref, type Component } from 'vue'
 import type { Chapter, ChatMessage } from '../types'
-import type { TabId, TabState } from '../composables/useSummarizer'
+import type { SubtitleFormat, TabId, TabState } from '../composables/useSummarizer'
 import MarkmapView from './MarkmapView.vue'
 
 interface TabDef {
@@ -43,7 +45,26 @@ const props = defineProps<{
 }>()
 
 const chatInput = defineModel<string>('chatInput', { required: true })
-const emit = defineEmits<{ selectTab: [tab: TabId]; ask: [] }>()
+const emit = defineEmits<{
+  selectTab: [tab: TabId]
+  ask: []
+  downloadSubtitles: [format: SubtitleFormat]
+}>()
+
+const SUBTITLE_FORMATS: { id: SubtitleFormat; label: string }[] = [
+  { id: 'srt', label: 'SRT 字幕 (.srt)' },
+  { id: 'vtt', label: 'WebVTT (.vtt)' },
+  { id: 'md', label: 'Markdown (.md)' },
+]
+const subtitleMenuOpen = ref(false)
+
+// 仅思维导图 / AI 问答两个 Tab 需要内容区撑满，与左栏主卡片等高
+const fillHeight = computed(() => props.activeTab === 'mindmap' || props.activeTab === 'chat')
+
+function downloadSubtitle(format: SubtitleFormat) {
+  subtitleMenuOpen.value = false
+  emit('downloadSubtitles', format)
+}
 
 function fmtTs(seconds: number) {
   const total = Math.floor(seconds || 0)
@@ -72,7 +93,7 @@ const state = (tab: TabId) => props.tabStatus[tab]
 </script>
 
 <template>
-  <section class="card animate-rise overflow-hidden">
+  <section class="card animate-rise flex flex-col overflow-hidden" :class="fillHeight ? 'flex-1' : ''">
     <!-- Tab 标签栏 -->
     <div class="flex items-center gap-1 overflow-x-auto border-b border-slate-100 px-2 sm:px-3">
       <button
@@ -98,7 +119,7 @@ const state = (tab: TabId) => props.tabStatus[tab]
     </div>
 
     <!-- 内容区 -->
-    <div class="p-4 sm:p-5">
+    <div class="p-4 sm:p-5" :class="fillHeight ? 'flex min-h-0 flex-1 flex-col' : ''">
       <!-- 总结摘要 -->
       <div v-if="activeTab === 'summary'" class="space-y-6">
         <div v-if="state('summary').status === 'idle'" class="py-10 text-center text-sm text-slate-400">
@@ -155,7 +176,34 @@ const state = (tab: TabId) => props.tabStatus[tab]
         </div>
 
         <div v-if="transcript">
-          <h3 class="headline text-sm text-slate-900">原始字幕</h3>
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="headline text-sm text-slate-900">原始字幕</h3>
+            <div class="relative">
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-brand-300 hover:bg-slate-50"
+                @click="subtitleMenuOpen = !subtitleMenuOpen"
+              >
+                <Download class="size-3.5" />
+                下载字幕
+                <ChevronDown class="size-3.5" :class="subtitleMenuOpen ? 'rotate-180' : ''" />
+              </button>
+              <div
+                v-if="subtitleMenuOpen"
+                class="card absolute right-0 top-full z-20 mt-1 w-44 p-1 shadow-lift"
+              >
+                <button
+                  v-for="item in SUBTITLE_FORMATS"
+                  :key="item.id"
+                  type="button"
+                  class="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50"
+                  @click="downloadSubtitle(item.id)"
+                >
+                  {{ item.label }}
+                </button>
+              </div>
+            </div>
+          </div>
           <div
             class="mt-2 max-h-72 overflow-y-auto rounded-xl bg-slate-50 p-3 text-xs leading-relaxed whitespace-pre-wrap text-slate-600"
           >
@@ -195,7 +243,7 @@ const state = (tab: TabId) => props.tabStatus[tab]
       </div>
 
       <!-- 思维导图 -->
-      <div v-else-if="activeTab === 'mindmap'">
+      <div v-else-if="activeTab === 'mindmap'" class="flex min-h-0 flex-1 flex-col">
         <div v-if="state('mindmap').status === 'idle'" class="py-10 text-center text-sm text-slate-400">
           点击本标签生成思维导图
         </div>
@@ -210,14 +258,14 @@ const state = (tab: TabId) => props.tabStatus[tab]
           <p class="mt-3 text-sm text-rose-500">{{ state('mindmap').error }}</p>
         </div>
 
-        <div v-else-if="mindmapMarkdown" class="rounded-xl bg-slate-50 p-2">
-          <MarkmapView :markdown="mindmapMarkdown" />
+        <div v-else-if="mindmapMarkdown" class="flex min-h-0 flex-1 flex-col">
+          <MarkmapView :markdown="mindmapMarkdown" class="min-h-0 flex-1" />
         </div>
       </div>
 
       <!-- AI 问答 -->
-      <div v-else class="flex flex-col">
-        <div class="min-h-40 space-y-2">
+      <div v-else class="flex min-h-0 flex-1 flex-col">
+        <div class="min-h-40 flex-1 space-y-2 overflow-y-auto">
           <div v-if="!chatMessages.length" class="py-10 text-center text-sm text-slate-400">
             针对本视频提问，AI 将基于字幕内容回答
           </div>
@@ -264,5 +312,8 @@ const state = (tab: TabId) => props.tabStatus[tab]
         </div>
       </div>
     </div>
+
+    <!-- 点击外部关闭字幕格式下拉 -->
+    <div v-if="subtitleMenuOpen" class="fixed inset-0 z-10" @click="subtitleMenuOpen = false"></div>
   </section>
 </template>
