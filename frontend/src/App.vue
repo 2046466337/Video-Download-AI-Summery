@@ -7,9 +7,11 @@ import FeatureSection from './components/FeatureSection.vue'
 import HeroSearch from './components/HeroSearch.vue'
 import HowItWorks from './components/HowItWorks.vue'
 import ProSection from './components/ProSection.vue'
+import SummaryCard from './components/SummaryCard.vue'
 import TaskList from './components/TaskList.vue'
 import VideoResult from './components/VideoResult.vue'
 import { useDownloader } from './composables/useDownloader'
+import { useSummarizer } from './composables/useSummarizer'
 
 const {
   url,
@@ -25,7 +27,27 @@ const {
   removeTask,
 } = useDownloader()
 
+const {
+  summary,
+  errorMessage: summaryError,
+  chatMessages,
+  chatInput,
+  asking,
+  startSummary,
+  ask,
+  reset: resetSummary,
+} = useSummarizer()
+
+function onSummarize() {
+  if (!video.value) return
+  startSummary(video.value)
+  nextTick(() => {
+    document.getElementById('summary')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
 watch(video, async (info) => {
+  resetSummary()
   if (!info) return
   await nextTick()
   document.getElementById('result')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -69,6 +91,27 @@ watch(
             v-model:selected="selectedOptionId"
             :video="video"
             @download="startDownload()"
+            @summarize="onSummarize"
+          />
+        </div>
+
+        <div id="summary" class="scroll-mt-24">
+          <p
+            v-if="summaryError"
+            role="alert"
+            class="animate-rise flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600"
+          >
+            <AlertCircle class="mt-0.5 size-4 shrink-0" />
+            <span>{{ summaryError }}</span>
+          </p>
+          <SummaryCard
+            v-if="summary"
+            v-model:chatInput="chatInput"
+            :summary="summary"
+            :chat-messages="chatMessages"
+            :asking="asking"
+            :video-url="video?.url || ''"
+            @ask="ask"
           />
         </div>
 

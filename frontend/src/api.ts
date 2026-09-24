@@ -1,4 +1,4 @@
-import type { TaskState, VideoInfo } from './types'
+import type { SummaryState, TaskState, VideoInfo } from './types'
 
 export class ApiError extends Error {}
 
@@ -41,3 +41,13 @@ export const createDownload = (payload: CreateDownloadPayload) =>
 export const fetchTask = (id: string) => request<TaskState>(`/api/downloads/${id}`)
 
 export const fetchStats = () => request<{ total_downloads: number }>('/api/stats')
+
+// ---------------- AI 视频总结 ----------------
+
+export const createSummary = (payload: { url: string; title: string; platform: string }) =>
+  request<SummaryState>('/api/summaries', payload)
+
+export const fetchSummary = (id: string) => request<SummaryState>(`/api/summaries/${id}`)
+
+export const askSummary = (id: string, message: string) =>
+  request<{ answer: string }>(`/api/summaries/${id}/chat`, { message })

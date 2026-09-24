@@ -41,3 +41,42 @@ export interface TaskState {
   download_url: string
   error: string
 }
+
+// ---------------- AI 视频总结 ----------------
+
+export type SummaryStatus = 'queued' | 'running' | 'success' | 'failed'
+
+export interface Chapter {
+  start: number
+  end: number
+  title: string
+  summary: string
+}
+
+export interface MindMapNode {
+  topic: string
+  children: MindMapNode[]
+}
+
+export interface SummaryResult {
+  summary: string
+  key_points: string[]
+  chapters: Chapter[]
+  mindmap: MindMapNode
+}
+
+export interface SummaryState {
+  id: string
+  status: SummaryStatus
+  stage: string
+  progress: number
+  title: string
+  platform: string
+  error: string
+  result: SummaryResult | null
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}

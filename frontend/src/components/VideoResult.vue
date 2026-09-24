@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Clock, Download, Music4, User } from 'lucide-vue-next'
+import { Clock, Download, Music4, Sparkles, User } from 'lucide-vue-next'
 import type { QualityOption, VideoInfo } from '../types'
 
 defineProps<{ video: VideoInfo }>()
 const selected = defineModel<string>('selected', { required: true })
-const emit = defineEmits<{ download: [] }>()
+const emit = defineEmits<{ download: []; summarize: [] }>()
 
 const isHighEnd = (option: QualityOption) => (option.height ?? 0) >= 1440
 </script>
@@ -91,14 +91,24 @@ const isHighEnd = (option: QualityOption) => (option.height ?? 0) >= 1440
             </button>
           </div>
 
-          <button
-            type="button"
-            class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white shadow-lift transition hover:opacity-90 sm:w-auto"
-            @click="emit('download')"
-          >
-            <Download class="size-4" />
-            开始下载
-          </button>
+          <div class="mt-4 flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white shadow-lift transition hover:opacity-90 sm:w-auto"
+              @click="emit('download')"
+            >
+              <Download class="size-4" />
+              开始下载
+            </button>
+            <button
+              type="button"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-full border border-brand-200 bg-white px-6 py-3 text-sm font-semibold text-brand-600 transition hover:bg-brand-50 sm:w-auto"
+              @click="emit('summarize')"
+            >
+              <Sparkles class="size-4" />
+              AI 总结
+            </button>
+          </div>
         </div>
       </div>
     </div>

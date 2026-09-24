@@ -13,6 +13,7 @@ from . import db
 from .cleaner import start_cleaner
 from .config import FRONTEND_DIST
 from .routes import router
+from .summary_routes import summary_router
 
 _stop_cleaner = threading.Event()
 
@@ -36,6 +37,7 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(summary_router)
 
 if FRONTEND_DIST.exists():
     app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
