@@ -88,17 +88,19 @@ watch(
         @parse="parse"
       />
 
-      <!-- 视频解析后的左右分栏：桌面 4:6 并排，移动端上下流式 -->
-      <div v-if="video" class="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
+      <!-- 解析/下载错误提示：独立于结果区，解析失败（video 为空）时也必须可见 -->
+      <div v-if="errorMessage" class="mx-auto max-w-7xl px-4 sm:px-6">
         <p
-          v-if="errorMessage"
           role="alert"
-          class="animate-rise mb-4 flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600"
+          class="animate-rise my-4 flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600"
         >
           <AlertCircle class="mt-0.5 size-4 shrink-0" />
           <span>{{ errorMessage }}</span>
         </p>
+      </div>
 
+      <!-- 视频解析后的左右分栏：桌面 4:6 并排，移动端上下流式 -->
+      <div v-if="video" class="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-10">
           <!-- 左栏：视频预览卡片（4/10） -->
           <div id="result" class="scroll-mt-24 lg:col-span-4">

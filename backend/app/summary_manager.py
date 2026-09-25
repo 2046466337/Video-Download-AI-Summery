@@ -31,6 +31,9 @@ STAGE_SUMMARIZING = "总结中"
 STAGE_DONE = "已完成"
 STAGE_FAILED = "失败"
 
+# 无字幕时展示给用户的提示（抖音需作者上传字幕，B 站可用自动字幕）
+NO_SUBTITLE_TIP = "该视频没有可用的字幕，暂时无法 AI 总结。（抖音需作者上传字幕，B站 可用自动字幕）"
+
 
 def _init_summary_db() -> None:
     """独立建 summary_records 表，不修改 db.py 的既有 SCHEMA。"""
@@ -259,10 +262,7 @@ class SummaryManager:
             try:
                 cues = subtitles.extract_subtitles(task.url)
                 if not cues:
-                    raise RuntimeError(
-                        "该视频没有可用的字幕，暂时无法 AI 总结。"
-                        "（B 站需 UP 主上传字幕，YouTube 可用自动字幕）"
-                    )
+                    raise RuntimeError(NO_SUBTITLE_TIP)
                 task.transcript = cues
                 task.transcript_text = subtitles.transcript_to_text(cues)
 

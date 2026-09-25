@@ -162,6 +162,7 @@ export function useSummarizer() {
 
     const controller = newController()
     let phase = ''
+    let errored = false
 
     try {
       await consumeSSE(
@@ -172,12 +173,14 @@ export function useSummarizer() {
           } else if (event === 'delta') {
             applyDelta(tab, phase, data.content || '')
           } else if (event === 'error') {
+            errored = true
             state.error = data.message || '加载失败'
           }
         },
         controller.signal,
       )
-      state.status = 'done'
+      // error 事件表示生成失败，不能当作正常完成，否则错误提示会被吞掉
+      state.status = errored ? 'error' : 'done'
     } catch (e) {
       if (controller.signal.aborted) return
       state.status = 'error'
