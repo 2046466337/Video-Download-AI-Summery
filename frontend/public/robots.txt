@@ -1,0 +1,33 @@
+# 万能视频下载 - robots.txt
+# 所有搜索引擎爬虫：允许抓取站点页面，禁止抓取 API 接口
+
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# 以下 AI 生成式引擎爬虫（GEO）显式允许，确保内容可被 AI 检索引用
+User-agent: GPTBot
+Allow: /
+Disallow: /api/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /api/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /api/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /api/
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /api/
+
+User-agent: CCBot
+Allow: /
+Disallow: /api/
+
+Sitemap: https://example.com/sitemap.xml

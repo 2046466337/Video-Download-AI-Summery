@@ -262,6 +262,10 @@ class SummaryManager:
             try:
                 cues = subtitles.extract_subtitles(task.url)
                 if not cues:
+                    raise RuntimeError(
+                        "该视频没有可用的字幕，暂时无法 AI 总结。"
+                        "（抖音需 UP 主上传字幕，B 站可用自动字幕）"
+                    )
                     raise RuntimeError(NO_SUBTITLE_TIP)
                 task.transcript = cues
                 task.transcript_text = subtitles.transcript_to_text(cues)

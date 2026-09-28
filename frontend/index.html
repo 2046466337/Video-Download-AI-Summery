@@ -3,15 +3,183 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%231777FF'/%3E%3Cpath d='M16 8v11m0 0l-4.5-4.5M16 19l4.5-4.5M9 22.5h14' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E" />
-    <title>万能视频下载 - 一个链接，全平台高清视频随手存</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- ===== 核心 SEO：TDK ===== -->
+    <title>万能视频下载 - 免费在线视频下载工具 | 4K高清下载、MP3提取、AI视频总结</title>
     <meta
       name="description"
-      content="支持 1000+ 主流平台的在线视频下载工具，粘贴链接即可下载 4K 高清视频或提取 MP3 音频，免安装、免登录，手机电脑都能用。"
+      content="支持B站、抖音、YouTube等1000+平台的免费在线视频下载工具，粘贴链接即可下载4K高清视频、提取MP3音频，免安装免登录，手机电脑都能用；内置AI视频总结，一键提炼要点、章节大纲与思维导图，立即免费体验。"
     />
+    <meta
+      name="keywords"
+      content="视频下载,在线视频下载,视频下载工具,视频解析,B站视频下载,抖音视频下载,YouTube下载,MP3提取,AI视频总结,万能视频下载"
+    />
+
+    <!-- ===== 爬虫控制 ===== -->
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://example.com/" />
+
+    <!-- ===== Open Graph（社交分享）===== -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="万能视频下载" />
+    <meta property="og:title" content="万能视频下载 - 免费在线视频下载工具" />
+    <meta
+      property="og:description"
+      content="粘贴链接即可下载4K高清视频、提取MP3音频，支持1000+平台，免安装免登录，还有AI视频总结一键提炼要点。"
+    />
+    <meta property="og:url" content="https://example.com/" />
+    <meta property="og:image" content="https://example.com/og-image.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="zh_CN" />
+
+    <!-- ===== Twitter Card ===== -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="万能视频下载 - 免费在线视频下载工具" />
+    <meta
+      name="twitter:description"
+      content="粘贴链接即可下载4K高清视频、提取MP3音频，支持1000+平台，免安装免登录，还有AI视频总结一键提炼要点。"
+    />
+    <meta name="twitter:image" content="https://example.com/og-image.svg" />
+
+    <!-- ===== 其他 ===== -->
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%231777FF'/%3E%3Cpath d='M16 8v11m0 0l-4.5-4.5M16 19l4.5-4.5M9 22.5h14' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E" />
+
+    <!-- ===== Schema.org 结构化数据（JSON-LD）===== -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://example.com/#organization",
+            "name": "万能视频下载",
+            "alternateName": "万能视频下载总结器",
+            "url": "https://example.com/",
+            "logo": "https://example.com/og-image.svg"
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://example.com/#webapp",
+            "name": "万能视频下载",
+            "alternateName": "万能视频下载总结器",
+            "url": "https://example.com/",
+            "description": "支持B站、抖音、YouTube等1000+平台的免费在线视频下载工具，粘贴链接即可下载4K高清视频、提取MP3音频，并内置AI视频总结。",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Any",
+            "inLanguage": "zh-CN",
+            "dateModified": "2026-09-25",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CNY" },
+            "featureList": [
+              "4K高清视频下载",
+              "MP3音频提取",
+              "AI视频总结",
+              "免安装免登录",
+              "手机电脑通用"
+            ],
+            "publisher": { "@id": "https://example.com/#organization" }
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "万能视频下载支持哪些平台？",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "支持 YouTube、哔哩哔哩、抖音、TikTok、微博、快手等 1000+ 主流视频平台，粘贴链接即可解析下载。"
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "需要安装客户端或注册登录吗？",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "不需要。打开网页粘贴链接即可使用，全程免安装、免登录，电脑和手机浏览器都能直接把文件保存到本地。"
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "可以下载 4K 高清视频吗？",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "可以。支持 4K、2K、1080P、720P 等多档清晰度选择，其中 4K 与原始画质为 Pro 会员专享。"
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "如何提取视频中的 MP3 音频？",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "解析成功后选择「仅音频 MP3」选项，即可将视频音频提取为 192kbps 的 MP3 文件，适合网课、播客、音乐等场景。"
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "AI 视频总结功能怎么用？",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "视频解析成功后自动生成内容摘要、核心要点、章节大纲与思维导图，还可以基于字幕进行 AI 问答，逐字流式输出。"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>
+
+    <!-- ===== GEO：禁用 JS 的 AI 爬虫（GPTBot / ClaudeBot / Perplexity 等）可读的静态正文 =====
+         内容与 Vue 渲染后的页面保持一致，属渐进增强，非 cloaking -->
+    <noscript>
+      <main style="max-width: 720px; margin: 0 auto; padding: 24px; font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; line-height: 1.8; color: #0f172a;">
+        <h1>万能视频下载 —— 粘贴链接即可下载 4K 高清视频、提取 MP3、AI 一键总结</h1>
+
+        <p>万能视频下载是一款免费在线视频下载工具：粘贴视频链接，即可下载 4K 高清视频或提取 MP3 音频，支持哔哩哔哩、抖音、YouTube 等 1000+ 平台，免安装、免登录，手机电脑都能用；并内置 AI 视频总结，自动生成内容摘要、核心要点、章节大纲与思维导图。</p>
+
+        <h2>核心功能</h2>
+        <ul>
+          <li><strong>4K 高清视频下载</strong>：支持 4K / 2K / 1080P / 720P 多档清晰度</li>
+          <li><strong>MP3 音频提取</strong>：输出 192kbps 音频，适合网课、播客、音乐</li>
+          <li><strong>AI 视频总结</strong>：内容摘要、核心要点、章节大纲、思维导图、AI 问答</li>
+          <li><strong>免安装、免登录</strong>：打开网页即用，手机电脑通用</li>
+        </ul>
+
+        <h2>支持平台</h2>
+        <p>YouTube、哔哩哔哩、抖音、TikTok、微博、快手、Instagram、Facebook、Vimeo、Twitch、Reddit 等 1000+ 主流平台。</p>
+
+        <h2>三步完成下载</h2>
+        <ol>
+          <li>粘贴任意平台的视频链接</li>
+          <li>选择清晰度（4K / 1080P / 720P / 仅音频 MP3）</li>
+          <li>点击下载，文件直接保存到手机或电脑</li>
+        </ol>
+
+        <h2>常见问题</h2>
+
+        <h3>万能视频下载支持哪些平台？</h3>
+        <p>支持 YouTube、哔哩哔哩、抖音、TikTok、微博、快手等 1000+ 主流视频平台，粘贴链接即可解析下载。</p>
+
+        <h3>需要安装客户端或注册登录吗？</h3>
+        <p>不需要。打开网页粘贴链接即可使用，全程免安装、免登录，电脑和手机浏览器都能直接把文件保存到本地。</p>
+
+        <h3>可以下载 4K 高清视频吗？</h3>
+        <p>可以。支持 4K、2K、1080P、720P 等多档清晰度选择，其中 4K 与原始画质为 Pro 会员专享。</p>
+
+        <h3>如何提取视频中的 MP3 音频？</h3>
+        <p>解析成功后选择「仅音频 MP3」选项，即可将视频音频提取为 192kbps 的 MP3 文件，适合网课、播客、音乐等场景。</p>
+
+        <h3>AI 视频总结功能怎么用？</h3>
+        <p>视频解析成功后自动生成内容摘要、核心要点、章节大纲与思维导图，还可以基于字幕进行 AI 问答，逐字流式输出。</p>
+
+        <p>更新于 2026 年 9 月。</p>
+      </main>
+    </noscript>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

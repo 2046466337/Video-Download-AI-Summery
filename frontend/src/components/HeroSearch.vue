@@ -26,14 +26,6 @@ const platforms = [
   '哔哩哔哩',
   '抖音',
   'TikTok',
-  'X / Twitter',
-  '微博',
-  '快手',
-  'Instagram',
-  'Facebook',
-  'Vimeo',
-  'Twitch',
-  'Reddit',
 ]
 </script>
 
@@ -48,12 +40,12 @@ const platforms = [
       </span>
 
       <h1 class="headline mt-5 text-[32px] leading-[1.18] text-slate-900 sm:text-[52px]">
-        视频下载，<span class="text-brand-600">粘贴链接就好</span>
+        视频下载 · AI 总结
       </h1>
 
       <p class="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-slate-500 sm:text-base">
         支持 1000+ 主流平台，最高 4K 原画无损保存。<br class="hidden sm:inline" />
-        一键提取 MP3，不用装客户端，不用开会员。
+        一键提取 MP3、AI 总结要点，不用装客户端。
       </p>
 
       <form class="mx-auto mt-8 max-w-2xl" @submit.prevent="emit('parse')">

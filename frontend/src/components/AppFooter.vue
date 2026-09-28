@@ -8,6 +8,7 @@
         因使用者行为导致的版权纠纷由使用者自行承担。
       </p>
       <p class="mt-3 text-xs text-slate-300">万能视频下载 · 基于开源解析引擎构建</p>
+      <p class="mt-1 text-xs text-slate-300">更新于 2026 年 9 月</p>
     </div>
   </footer>
 </template>
