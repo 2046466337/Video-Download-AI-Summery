@@ -10,10 +10,12 @@ import json
 
 from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response, StreamingResponse
 
 from .ai_client import AIClientError
+from .auth_routes import get_optional_user
+from .quota import QuotaError, try_consume
 from .security import UnsafeUrlError, validate_url
 from .subtitle_export import safe_filename, to_markdown, to_srt, to_vtt
 from .subtitles import SubtitleError
@@ -24,11 +26,20 @@ summary_router = APIRouter(prefix="/api")
 
 
 @summary_router.post("/summaries", response_model=SummaryState)
-async def create_summary(payload: SummaryRequest) -> SummaryState:
+async def create_summary(
+    payload: SummaryRequest,
+    user: dict | None = Depends(get_optional_user),
+) -> SummaryState:
     try:
         url = validate_url(payload.url)
     except UnsafeUrlError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # 权益拦截：免费用户每日 AI 总结 3 次，会员不限
+    try:
+        try_consume(user, payload.client_id, "summary")
+    except QuotaError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     task = summary_manager.submit(url=url, title=payload.title, platform=payload.platform)
     return SummaryState(**task.snapshot())

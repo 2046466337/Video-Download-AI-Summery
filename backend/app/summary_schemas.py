@@ -14,6 +14,7 @@ class SummaryRequest(BaseModel):
     url: str = Field(..., max_length=2048)
     title: str = ""
     platform: str = ""
+    client_id: str = ""
 
 
 class SummaryState(BaseModel):

@@ -18,3 +18,7 @@ curl_cffi
 # 抖音 Argus 风控需要真实浏览器渲染；优先用系统 Edge（channel="msedge"），
 # 无 Edge 时需执行 `python -m playwright install chromium` 下载浏览器
 playwright
+
+# 会员支付：Stripe Checkout（真实支付）与 PyJWT（登录鉴权 JWT）
+stripe
+PyJWT

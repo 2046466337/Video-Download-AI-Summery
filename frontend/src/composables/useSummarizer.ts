@@ -1,6 +1,7 @@
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { ApiError, createSummary } from '../api'
 import type { Chapter, ChatMessage, VideoInfo } from '../types'
+import { useAuth } from './useAuth'
 
 export type TabId = 'summary' | 'subtitle' | 'mindmap' | 'chat'
 
@@ -191,13 +192,18 @@ export function useSummarizer() {
   }
 
   async function startSummary(info: VideoInfo) {
+    const { token, clientId } = useAuth()
     reset()
     try {
-      const task = await createSummary({
-        url: info.url,
-        title: info.title,
-        platform: info.platform,
-      })
+      const task = await createSummary(
+        {
+          url: info.url,
+          title: info.title,
+          platform: info.platform,
+          client_id: clientId.value,
+        },
+        token.value || undefined,
+      )
       beginLoad(task.id)
     } catch (error) {
       errorMessage.value =

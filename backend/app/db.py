@@ -35,6 +35,39 @@ CREATE TABLE IF NOT EXISTS counters (
     key   TEXT PRIMARY KEY,
     value INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS users (
+    id            TEXT PRIMARY KEY,
+    email         TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at    TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS memberships (
+    user_id           TEXT PRIMARY KEY,
+    plan              TEXT NOT NULL,
+    status            TEXT NOT NULL,
+    starts_at         TEXT NOT NULL,
+    expires_at        TEXT NOT NULL,
+    stripe_session_id TEXT UNIQUE,
+    created_at        TEXT NOT NULL,
+    updated_at        TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_memberships_expires ON memberships(expires_at);
+
+CREATE TABLE IF NOT EXISTS webhook_events (
+    event_id     TEXT PRIMARY KEY,
+    processed_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS usage_counters (
+    subject   TEXT NOT NULL,
+    date      TEXT NOT NULL,
+    downloads INTEGER NOT NULL DEFAULT 0,
+    summaries INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (subject, date)
+);
 """
 
 

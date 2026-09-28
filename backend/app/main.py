@@ -10,8 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from . import db
+from .auth_routes import auth_router
 from .cleaner import start_cleaner
 from .config import FRONTEND_DIST
+from .payment_routes import payment_router
 from .routes import router
 from .summary_routes import summary_router
 
@@ -38,6 +40,8 @@ app.add_middleware(
 
 app.include_router(router)
 app.include_router(summary_router)
+app.include_router(auth_router)
+app.include_router(payment_router)
 
 if FRONTEND_DIST.exists():
     app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")

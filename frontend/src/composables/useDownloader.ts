@@ -1,6 +1,7 @@
 import { onUnmounted, reactive, ref } from 'vue'
 import { ApiError, createDownload, fetchStats, fetchTask, parseVideo } from '../api'
 import type { QualityOption, TaskState, VideoInfo } from '../types'
+import { useAuth } from './useAuth'
 
 const POLL_INTERVAL = 800
 
@@ -55,6 +56,8 @@ export function useDownloader() {
     }
   }
 
+  const { token, clientId } = useAuth()
+
   async function parse() {
     const target = url.value.trim()
     if (!target || parsing.value) return
@@ -63,7 +66,7 @@ export function useDownloader() {
     errorMessage.value = ''
     video.value = null
     try {
-      const info = await parseVideo(target)
+      const info = await parseVideo(target, clientId.value, token.value || undefined)
       video.value = info
       selectedOptionId.value =
         info.options.find((o) => o.recommended)?.id ?? info.options[0]?.id ?? ''
@@ -81,14 +84,18 @@ export function useDownloader() {
     if (!info || !target) return
 
     try {
-      const task = await createDownload({
-        url: info.url,
-        option_id: target.id,
-        title: info.title,
-        quality: target.label,
-        platform: info.platform,
-        expected_size: target.filesize ?? 0,
-      })
+      const task = await createDownload(
+        {
+          url: info.url,
+          option_id: target.id,
+          title: info.title,
+          quality: target.label,
+          platform: info.platform,
+          client_id: clientId.value,
+          expected_size: target.filesize ?? 0,
+        },
+        token.value || undefined,
+      )
       tasks.unshift(task)
       ensurePolling()
     } catch (error) {

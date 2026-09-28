@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class ParseRequest(BaseModel):
     url: str = Field(..., max_length=2048)
+    client_id: str = ""
 
 
 class QualityOption(BaseModel):
@@ -34,6 +35,8 @@ class VideoInfo(BaseModel):
     options: list[QualityOption] = []
     # 解析成功后自动触发的 AI 总结任务 id；为空表示未触发（如解析失败）
     summary_task_id: str = ""
+    # 自动总结因额度不足未触发时的提示文案；为空表示正常
+    summary_quota_message: str = ""
 
 
 class DownloadRequest(BaseModel):
@@ -42,6 +45,7 @@ class DownloadRequest(BaseModel):
     title: str = ""
     quality: str = ""
     platform: str = ""
+    client_id: str = ""
     # 解析阶段已知的预估总体积。音视频分轨会触发两轮下载，
     # 没有这个基准的话进度条会在第二轮从头再来一次。
     expected_size: int | None = None

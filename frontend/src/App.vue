@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { AlertCircle } from 'lucide-vue-next'
-import { nextTick, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppFooter from './components/AppFooter.vue'
 import AppHeader from './components/AppHeader.vue'
+import AuthModal from './components/AuthModal.vue'
 import FeatureSection from './components/FeatureSection.vue'
 import HeroSearch from './components/HeroSearch.vue'
 import HowItWorks from './components/HowItWorks.vue'
@@ -10,8 +11,13 @@ import ProSection from './components/ProSection.vue'
 import SummaryPanel from './components/SummaryPanel.vue'
 import TaskList from './components/TaskList.vue'
 import VideoResult from './components/VideoResult.vue'
+import { useAuth } from './composables/useAuth'
 import { useDownloader } from './composables/useDownloader'
+import { useMembership } from './composables/useMembership'
 import { useSummarizer } from './composables/useSummarizer'
+
+const { isLoggedIn, init: initAuth } = useAuth()
+const { isPro, load: loadMembership } = useMembership()
 
 const {
   url,
@@ -74,6 +80,53 @@ watch(
     document.getElementById('tasks')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   },
 )
+
+// ---------------- 登录态与会员 ----------------
+const paymentBanner = ref('')
+let bannerTimer: number | undefined
+
+// 显示支付结果横幅，几秒后自动消失，避免一直挡在页面顶部
+function showPaymentBanner(message: string) {
+  paymentBanner.value = message
+  if (bannerTimer !== undefined) window.clearTimeout(bannerTimer)
+  bannerTimer = window.setTimeout(() => {
+    paymentBanner.value = ''
+  }, 3000)
+}
+
+watch(isLoggedIn, () => {
+  loadMembership()
+})
+
+onMounted(async () => {
+  await initAuth()
+  await loadMembership()
+
+  // 真实 Stripe 支付跳回后的处理：轮询等待 webhook 落库
+  const params = new URLSearchParams(window.location.search)
+  const paymentResult = params.get('payment')
+  if (paymentResult === 'success') {
+    showPaymentBanner('支付成功，正在为你开通会员…')
+    for (let i = 0; i < 10; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      await loadMembership()
+      if (isPro.value) {
+        showPaymentBanner('Pro 会员已开通，感谢支持！')
+        break
+      }
+    }
+  } else if (paymentResult === 'cancel') {
+    showPaymentBanner('已取消支付')
+  }
+  // 清理 query，避免刷新时重复提示
+  if (window.location.search) {
+    window.history.replaceState(null, '', window.location.pathname)
+  }
+})
+
+onUnmounted(() => {
+  if (bannerTimer !== undefined) window.clearTimeout(bannerTimer)
+})
 </script>
 
 <template>
@@ -81,6 +134,17 @@ watch(
     <AppHeader />
 
     <main>
+      <!-- 支付结果横幅 -->
+      <div v-if="paymentBanner" class="mx-auto max-w-7xl px-4 sm:px-6">
+        <p
+          role="status"
+          class="animate-rise my-4 flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+        >
+          <AlertCircle class="mt-0.5 size-4 shrink-0" />
+          <span>{{ paymentBanner }}</span>
+        </p>
+      </div>
+
       <HeroSearch
         v-model="url"
         :parsing="parsing"
@@ -114,6 +178,15 @@ watch(
 
           <!-- 右栏：Tab 面板（6/10） -->
           <div id="summary" class="flex scroll-mt-24 flex-col lg:col-span-6">
+            <!-- 自动总结因免费额度用尽未触发时的提示 -->
+            <p
+              v-if="video.summary_quota_message"
+              role="status"
+              class="animate-rise mb-4 flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700"
+            >
+              <AlertCircle class="mt-0.5 size-4 shrink-0" />
+              <span>{{ video.summary_quota_message }}</span>
+            </p>
             <p
               v-if="summaryError"
               role="alert"
@@ -144,6 +217,11 @@ watch(
         <div id="tasks" class="mt-4 scroll-mt-24">
           <TaskList :tasks="tasks" @save="saveToDevice" @remove="removeTask" />
         </div>
+
+        <!-- 解析状态下也保留 Pro 对比卡片，供顶栏「Pro 会员」锚点跳转 -->
+        <div class="mx-auto mt-14 max-w-3xl">
+          <ProSection />
+        </div>
       </div>
 
       <!-- 未解析时的引导内容 -->
@@ -155,5 +233,6 @@ watch(
     </main>
 
     <AppFooter />
+    <AuthModal />
   </div>
 </template>

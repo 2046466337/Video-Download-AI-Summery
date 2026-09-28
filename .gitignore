@@ -1,6 +1,7 @@
 backend/.venv/
 backend/data/downloads/
 backend/data/app.db
+backend/data/.jwt_secret
 backend/data/cookies/
 backend/_bili_*/
 backend/_bili_*.txt

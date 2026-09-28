@@ -23,6 +23,8 @@ export interface VideoInfo {
   options: QualityOption[]
   /** 解析成功后后端自动触发的 AI 总结任务 id；为空表示未触发 */
   summary_task_id?: string
+  /** 自动总结因额度不足未触发时的提示；为空表示正常 */
+  summary_quota_message?: string
 }
 
 export type TaskStatus = 'queued' | 'running' | 'success' | 'failed'
@@ -81,4 +83,30 @@ export interface SummaryState {
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
+}
+
+// ---------------- 用户与会员 ----------------
+
+export interface User {
+  id: string
+  email: string
+}
+
+export interface AuthResponse {
+  token: string
+  user: User
+}
+
+export interface MembershipState {
+  active: boolean
+  plan: string
+  starts_at: string
+  expires_at: string
+  expires_text: string
+}
+
+export interface CheckoutResponse {
+  checkout_url: string
+  mode: 'mock' | 'stripe'
+  order_id: string
 }

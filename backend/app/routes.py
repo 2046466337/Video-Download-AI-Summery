@@ -5,10 +5,12 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 
 from . import db
+from .auth_routes import get_optional_user
+from .quota import QuotaError, try_consume
 from .schemas import DownloadRequest, ParseRequest, TaskState, VideoInfo
 from .security import UnsafeUrlError, validate_url
 from .summary_manager import summary_manager
@@ -29,7 +31,10 @@ async def stats() -> dict[str, int]:
 
 
 @router.post("/parse", response_model=VideoInfo)
-async def parse(payload: ParseRequest) -> VideoInfo:
+async def parse(
+    payload: ParseRequest,
+    user: dict | None = Depends(get_optional_user),
+) -> VideoInfo:
     try:
         url = validate_url(payload.url)
     except UnsafeUrlError as exc:
@@ -42,20 +47,36 @@ async def parse(payload: ParseRequest) -> VideoInfo:
 
     # 解析成功后自动触发 AI 总结任务（失败不触发）；仅新请求生效，不补跑历史视频。
     # auto=True 让该任务在字幕提取失败时自动重试 1 次。
-    summary_task = summary_manager.submit(
-        url=info["url"], title=info["title"], platform=info["platform"], auto=True
-    )
-    info["summary_task_id"] = summary_task.id
+    # 权益拦截：免费用户每日 AI 总结 3 次，会员不限；额度不足则不触发并返回提示。
+    info["summary_quota_message"] = ""
+    try:
+        try_consume(user, payload.client_id, "summary")
+        summary_task = summary_manager.submit(
+            url=info["url"], title=info["title"], platform=info["platform"], auto=True
+        )
+        info["summary_task_id"] = summary_task.id
+    except QuotaError as exc:
+        info["summary_task_id"] = ""
+        info["summary_quota_message"] = str(exc)
 
     return VideoInfo(**info)
 
 
 @router.post("/downloads", response_model=TaskState)
-async def create_download(payload: DownloadRequest) -> TaskState:
+async def create_download(
+    payload: DownloadRequest,
+    user: dict | None = Depends(get_optional_user),
+) -> TaskState:
     try:
         url = validate_url(payload.url)
     except UnsafeUrlError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # 权益拦截：免费用户每日下载 5 次，会员不限
+    try:
+        try_consume(user, payload.client_id, "download")
+    except QuotaError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     task = task_manager.submit(
         url=url,
